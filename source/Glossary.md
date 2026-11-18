@@ -1,6 +1,6 @@
 # ICA0024 Concept glossary
 
-A study reference for Lectures 1-3. Terms explain the principles used in the questionnaires, without requiring product-specific syntax. Entries are grouped by lecture and ordered alphabetically within each group. Related concepts may be useful in more than one lecture.
+A study reference for Lectures 1-9. Terms explain the principles used in the questionnaires, without requiring product-specific syntax. Entries are grouped by the lecture that first explains them and ordered alphabetically within each group. A concept that returns in a later lecture is defined only once; a term in *italics* inside a definition refers to another entry.
 
 ## Lecture 1: Infrastructure as Code concepts
 
@@ -8,13 +8,17 @@ A study reference for Lectures 1-3. Terms explain the principles used in the que
 
 The observed condition of infrastructure at a particular time. It can differ from the desired state because of manual changes, failures, incomplete deployment, or changes outside the automation's control.
 
+### Cattle versus pets
+
+A metaphor for two ways of treating servers. Pets are unique, hand-maintained machines whose loss is a serious problem; cattle are interchangeable instances that are recreated from maintained definitions when they fail. Treating servers as cattle still requires their persistent data to be kept and recovered separately.
+
 ### Configuration drift
 
 A difference between actual managed configuration and its intended baseline. A difference between environments is not automatically drift: explicitly approved differences, such as production capacity, can be intentional.
 
 ### Convergence
 
-The process of bringing actual state into agreement with desired state. An operation that does nothing repeatedly may be idempotent but still fail to converge if the starting state is incorrect.
+The process of bringing actual state into agreement with desired state. Some tools converge only when someone runs them, while others keep comparing and correcting continuously, so drift between runs is handled differently. An operation that does nothing repeatedly may be idempotent but still fail to converge if the starting state is incorrect.
 
 ### Declarative configuration
 
@@ -72,11 +76,11 @@ Recording changes to definitions over time so they can be reviewed, compared, an
 
 ### Base image
 
-An image used as the starting point for another image. A shared organizational base can contain a common baseline, while derived images add workload-specific software. Updating the base does not automatically update derived images or running instances.
+The image from which a machine or another image is created. Moving stable, rarely changing state into a shared base reduces later provisioning work, while derived images add workload-specific software. Updating the base does not automatically update derived images or running instances.
 
 ### Boot-time initialization
 
-Configuration performed when an instance starts, often to supply its identity or environment-specific values. Initialization and ongoing state reconciliation are different responsibilities; a first-start action is not automatically a continuous configuration check.
+Configuration performed when an instance starts for the first time, often from instructions supplied to the platform when the instance is created, sometimes called user data. It typically provides identity or environment-specific values. A first-start action is not a continuous configuration check, and its output is often harder to inspect than a separate configuration run.
 
 ### Build-time configuration
 
@@ -89,6 +93,10 @@ An isolated execution environment for application processes. Typical Linux conta
 ### Custom image
 
 An image prepared with selected organizational or workload-specific software and configuration. It can provide a tested common starting state and reduce launch-time setup. Its usefulness depends on maintaining and validating its build process.
+
+### Golden image
+
+A master image from which all machines of a given kind are started. If it is prepared by hand and captured as a snapshot, it collects undocumented changes and cannot be rebuilt reliably; if it is built automatically from maintained definitions, the same idea is sound. The name alone does not tell which of the two practices is used.
 
 ### Hypervisor
 
@@ -132,6 +140,10 @@ A machine-like environment with virtualized hardware and a guest operating syste
 
 ## Lecture 3: Server state and configuration organization
 
+### Agentless and agent-based management
+
+Two ways for a configuration tool to reach managed machines. Agent-based tools run a helper process on every node, while agentless tools connect over existing remote-access protocols and push changes during a run. Agentless management is simpler to adopt, but the targets must still be reachable, accept the credentials, and provide what the tool needs to run there.
+
 ### Change detection
 
 Determining whether relevant observed or generated configuration differs from the intended result. Meaningful checks can trigger necessary updates or reloads. The presence of a directory alone does not establish that the intended software version is installed.
@@ -151,6 +163,14 @@ A value that intentionally replaces a default or a value from another configurat
 ### Configuration parameter
 
 An explicit input that varies the behavior of a reusable definition, such as capacity or an environment-specific endpoint. Parameters allow shared logic to remain common while keeping intended differences visible and reviewable.
+
+### Configuration template
+
+A file with placeholders that are filled from variables and gathered facts before it is written to a target. It keeps one shared structure while letting values differ per host or group. Every placeholder needs a defined value in the run's context; a missing value should stop the run rather than produce an incomplete file.
+
+### Day 1 and day 2 operations
+
+Day 1 is the initial installation and configuration of a system; day 2 covers later maintenance such as updates, restarts, and cleanup. Initial setup can be mostly declarative, but maintenance often needs some imperative compensating actions, such as a restart after a configuration change. Treating day 2 as a repeat of day 1 can miss these follow-up steps.
 
 ### Default value
 
@@ -182,8 +202,308 @@ A coherent package of configuration responsibilities and supporting resources, s
 
 ### Separation of concerns
 
-Organizing definitions around distinct responsibilities, for example resource creation, server configuration, and functional verification. This can improve ownership and review without requiring separate products or repositories for every concern.
+Organizing definitions around distinct responsibilities, for example keeping the list of managed machines, the configuration data for groups and hosts, and the configuration code apart so that each can change independently. This can improve ownership and review without requiring separate products or repositories for every concern.
 
 ### Service reload and restart
 
 A reload asks a service to reread configuration where that behavior is supported; a restart stops and starts the service. The appropriate action depends on the service and change. Running either action unconditionally can introduce unnecessary work or disruption.
+
+## Lecture 4: Resilience and verifying configuration code
+
+### Automated safeguard
+
+An automated check placed around configuration code, such as a test, linter, or policy, that must pass before a change moves on; also called a guardrail. Because configuration is code, it can be checked by code, including code produced by an AI assistant. A safeguard reduces risk only as far as its checks reflect the behavior that actually matters.
+
+### Availability zone
+
+A physically separate data-centre location within a cloud region, which is a geographic area made up of several such zones. Spreading instances across zones lets a service survive the loss of one zone. Placing everything in one zone, or depending on a single shared component, still leaves a single point of failure.
+
+### Chaos engineering
+
+Deliberately and repeatedly introducing failures, such as stopping random servers, disabling a whole zone, or simulating traffic spikes, to show that a system recovers without users noticing. It turns resilience from an assumption into something that is tested regularly. It is only safe when recovery is automated and the impact of each experiment is understood.
+
+### Clean-state testing
+
+Running configuration code both against a freshly prepared machine and against one that has already been configured. Repeated runs on one long-lived machine can hide steps that only work because of earlier manual or partial changes. A cleanup procedure can make this faster, but a full rebuild remains the final check.
+
+### Conflicting resource ownership
+
+A situation in which two definitions manage the same resource with different intended values, such as one directory with two different owners. Each run then changes the resource back and forth, so the code never reaches a stable result and appears not to be idempotent. Every managed property should have one clear owner.
+
+### Fast feedback loop
+
+Keeping the time between making a change and seeing its tested result short, for example with quick resets and targeted runs. Problems are then found while the change is still fresh. Speed does not replace the slower, complete checks needed before a release.
+
+### Linter
+
+A static analysis tool that checks code against rules for style, structure, maintainability, and risky constructs, beyond basic syntax. Its findings often point to code smells: signs that code is fragile or hard to maintain even though it runs. A clean linter result does not show that the configuration produces a working system.
+
+### Recovery test
+
+Deliberately stopping, restarting, or deleting a server or environment to check that it comes back in a working state. Once recovery is proven, monitoring can restart or replace failed machines automatically. A configuration that works only until the next reboot has not passed a recovery test.
+
+### Scream test
+
+Stopping a resource that seems unused and waiting to see whether anyone or anything reports a problem. It also checks whether monitoring and alerting react to an outage. Silence is weak evidence, so the resource should remain recoverable in case a rarely used dependency appears later.
+
+### Secrets outside version control
+
+Keeping private keys, passwords, and tokens out of committed code, for example by excluding them with an ignore file and supplying them from a protected store when needed. Deleting a committed secret in a later change does not remove it from the repository history, so an exposed secret must be replaced. Committed secrets are usually the first issue a security review flags.
+
+### State-aware operation
+
+An operation that inspects the actual state of a resource and changes only what differs, such as a package or service management step. A generic command guarded only by a check for an existing file is weaker, because the file can exist while the resource is still wrong. Generic commands remain a fallback when no state-aware operation exists.
+
+### Zero-downtime deployment
+
+Applying changes during normal operation without users noticing, for example by preparing a new version alongside the old one and switching traffic once it is healthy (blue-green deployment). It reduces reliance on announced maintenance windows. It requires redundancy, health checks, and changes that old and new versions can tolerate at the same time.
+
+## Lecture 5: Declarative cloud provisioning and state
+
+### API-driven infrastructure
+
+Infrastructure whose resources are exposed as objects that programs create, read, update, and delete through an API. These calls are imperative: a script must know which calls to make and in which order. Declarative tools use the same API but work out the calls from the described result.
+
+### Data source
+
+A lookup that reads information about existing resources managed elsewhere, such as a network, its subnets, or the latest suitable image, without creating anything. It avoids copying identifiers into code by hand. Its result can change between runs, for example when a newer image is published.
+
+### Execution plan
+
+A preview of what a run would add, change, or destroy, produced by comparing the code, the recorded state, and the real infrastructure. Some changes cannot be made in place, so the plan shows the resource being destroyed and recreated. A plan should be read before it is applied, and it describes intended operations rather than guaranteeing that they will succeed.
+
+### Health check
+
+A periodic probe that a load balancer or platform uses to decide whether a node can receive traffic. A node that fails several consecutive checks is taken out of rotation until it recovers. A health check proves only what it tests, so a shallow check can pass while the application is still broken.
+
+### Load balancer
+
+A single, stable entry point that spreads traffic across several nodes, absorbs spikes, and lets nodes be replaced without clients noticing. In a cloud it is usually assembled from several related resources, such as listeners, target groups, and network rules. It is a resource with its own cost and failure modes, not just a setting.
+
+### Managed service
+
+A provider-operated service, such as a managed database, that takes care of tasks like clustering, backups, and upgrades. It trades money and some control for less operational work than installing the same software on virtual machines. The consumer still configures it, secures access to it, and remains responsible for its data.
+
+### Provider
+
+A plug-in that connects a declarative provisioning tool to one API, such as a cloud, DNS, or monitoring service, and exposes that API's objects as resources. Several providers can be combined in one project. A provider reflects the platform's own resource model, so much of the complexity comes from the platform rather than from the tool.
+
+### Provisioner
+
+An imperative step, such as running commands or copying files, attached to a declaratively managed resource. It typically runs only when the resource is created, so later changes to the step are not applied to existing resources. Preparing an image or using a configuration tool is usually more predictable than mixing the two approaches.
+
+### Remote state
+
+Recorded state kept in shared storage outside an individual workstation, so that a team works from the same record. Only one run should change it at a time, which is usually enforced with locking. It must be protected like the infrastructure itself, because state can contain sensitive values.
+
+### Resource definition
+
+The basic unit of declarative provisioning code: a resource type from a provider, a local name used for references, and attributes describing the desired object. It plays a role similar to a single task in server configuration. The local name identifies the definition in code and is not necessarily the resource's name on the platform.
+
+### State file
+
+A tool's record of the objects it created and their identifiers, used together with the code and the real infrastructure to decide what to change. Because of it, a resource removed from the code is destroyed, whereas tools without recorded state need an explicit cleanup step. Recorded state can still differ from reality and can contain secrets, so it does not replace inspecting actual state.
+
+### State splitting
+
+Dividing infrastructure into several projects, each with its own state, for example by layer or by how often its parts change. Smaller states let teams work without blocking each other and limit the effect of a mistake. Values needed across the split must then be shared through explicit outputs or lookups rather than direct references.
+
+## Lecture 6: Choosing cloud deployment options
+
+### Conditional resource
+
+A resource that is created only when an input enables it, for example an optional load balancer that is switched off by default. Inputs can then control the shape and cost of an environment without separate copies of the code. Each combination of options is a different configuration that needs to be tested.
+
+### Container image
+
+The packaged application with its dependencies, from which containers are started. The same image can be run by functions, container services, virtual machines, or clusters, which keeps deployment options open. The term is wider than any one container engine, and the image still needs permissions, configuration, and a runtime environment around it.
+
+### Container registry
+
+A service that stores and distributes container images; it can be public, self-hosted, or provided by the cloud. Private application images belong in a private registry, which can be defined as code together with rules such as how many images to retain. A registry used by several deployments is shared infrastructure and may deserve its own project and state (see *State splitting*).
+
+### Containers as a service (CaaS)
+
+A compute option in which the provider runs container images as tasks or services without exposing the underlying machines. A task definition describes how to run a container, while a service keeps the intended number of copies running. An always-running container is paid for even when it receives no requests.
+
+### Event-driven architecture
+
+An application design made of small handlers that react to events such as requests, messages, or schedules. It fits functions well because each reaction can run independently. A monolithic application usually fits better in one long-running container, virtual machine, or cluster.
+
+### Function as a service (FaaS)
+
+A compute option in which the platform runs code, packaged as an archive or container image for a supported runtime, in response to events such as HTTP requests or schedules. The platform starts more function instances as concurrent requests grow and removes them when traffic stops. Execution-time and runtime limits make it unsuitable for some long-running work.
+
+### Managed container cluster
+
+A container orchestration cluster, such as managed Kubernetes, whose control plane is operated by the provider. It can handle far larger and more complex workloads than a few containers need. It still includes virtual machines and usually a load balancer, so it costs more and brings more operational responsibility.
+
+### Scheduled event
+
+An event emitted on a schedule by a separate platform service to start a function or container task. Moving scheduling out of the application means compute runs, and is paid for, only when the job runs. The scheduler needs its own permission to start its target.
+
+### Secrets management service
+
+A platform service that stores secrets, such as passwords or keys, which applications read by name at run time instead of having them in code or images. The application needs explicit permission to read each secret. Values passed through provisioning code can still end up in recorded state unless the tool supports values that are not stored.
+
+### Serverless
+
+Compute options in which the platform hides the machines, so users deal with code, permissions, and integrations rather than servers. Functions and containers as a service are both examples. Servers still exist, and their limits, costs, and failure modes still affect the design.
+
+### Usage-based pricing
+
+Paying for resources while they run or handle work, such as function execution time, rather than for capacity that is always on. Idle usage-based resources can cost little or nothing, while always-on resources such as load balancers or running machines cost money even without traffic. A small change in code can therefore produce a large change in cost.
+
+### Workload permissions
+
+Access rights granted to applications and services rather than to people, ideally narrowed to exactly what they need, such as one secret or one image repository. When resources are created through code, nothing is granted by default, not even writing logs, whereas an interactive console may add such permissions silently. Missing permissions are a common reason why code that imitates a console setup fails.
+
+## Lecture 7: Modules, versioning and automated quality checks
+
+### CI/CD pipeline
+
+An automated sequence that runs on every change: fast checks such as linters, policy checks, and smoke tests first, then delivery to a first environment such as staging with integration and monitoring checks, and only then production. Ordering stages from cheap to expensive gives early feedback. A pipeline enforces only the checks it actually contains.
+
+### Insourcing
+
+Copying the code of an existing, often inactive, third-party module into your own codebase, adapting it, and maintaining it yourself. It preserves useful work when the original project no longer meets your needs. From then on, fixes and security updates are your own responsibility.
+
+### Integration test
+
+A test that applies infrastructure code to real or realistic targets, such as containers or virtual machines with different operating systems, and checks the result. It catches what usually breaks in practice, such as package names that differ between distributions. It needs test images, machines or runners, and a way to create and destroy throwaway targets.
+
+### Module interface
+
+The set of inputs and defaults through which consumers configure a *reusable configuration unit*. It is the contract that versioning protects, so changing it can break consumers. A module with hundreds of inputs often indicates the wrong abstraction; several focused modules are usually easier to use.
+
+### Module quality assessment
+
+Judging a third-party module before adopting it: how active it is, how quickly issues and security problems are fixed, how its interface has evolved, who maintains it, and whether it has documentation, examples, and tests. Popularity and download counts show the scale of use, not suitability. An adopted module becomes part of your own infrastructure's risk.
+
+### Module registry
+
+A shared library where reusable modules or roles are published, discovered, and downloaded. It makes existing work easy to find and reuse. Publication in a registry does not guarantee quality, so each module still needs a *module quality assessment*.
+
+### Policy as code
+
+Organization-wide rules, such as required tags, approved providers, or size and security limits, written as code and checked automatically by a policy engine. A violation can produce a warning or stop the pipeline before the change reaches infrastructure. Policies check rules about the code, not whether the deployed system works.
+
+### Refactoring
+
+Restructuring code to improve its boundaries and clarity, for example by extracting repeated logic into modules, without changing its intended result. Code that keeps growing without restructuring becomes hard for people and AI assistants to change safely. Refactoring relies on tests that show the behavior is preserved.
+
+### Semantic versioning
+
+A versioning scheme of major.minor.patch numbers. A patch release must not change the interface, a minor release may add backward-compatible functionality, and only a major release may introduce breaking changes. The scheme is a promise kept by people and checks; the numbers alone do not prove compatibility.
+
+### Test matrix
+
+Running the same tests against several target environments or parameter sets, such as different operating-system distributions, with one run per combination. It shows where behavior differs between targets. Each added dimension multiplies the cost, so the matrix should cover the targets that matter to the module's users.
+
+### Unit test
+
+A fast, local test of logic in isolation from real resources. For infrastructure code it often adds little, because much of the logic is already validated by the tool and real failures appear on real targets. It is not a substitute for an *integration test*.
+
+### Version pinning
+
+Referring to an exact module version rather than the latest release or a version range. Pinning lets maintainers release freely while each consumer decides when to upgrade. Pinned versions still need deliberate, tested upgrades, or consumers fall behind on fixes.
+
+## Lecture 8: Module versioning and interface design
+
+### Artifact repository
+
+A place where released versions, such as modules, images, or application packages, are stored and distributed, for example as version-control tags, release pages, or files on a server. It isolates consumers from ongoing development because they use only published versions. The repository is itself infrastructure that must be maintained and protected.
+
+### Environment
+
+An isolated context that delivers an application's resources and dependencies, such as development, staging, or production. There is no universal definition: its scope depends on the organization, team, and scale. Creating every environment from the same module with different parameters reduces drift and keeps lower environments useful for testing (see *Environment-specific configuration*).
+
+### Extension point
+
+An input designed to let consumers add behavior without changing a module, such as a list of virtual hosts passed to a web-server role. It applies the *open-closed principle*. Each extension point becomes part of the interface and must be maintained.
+
+### External module
+
+A module, role, or package published by a community or vendor and imported rather than written in-house. A well-maintained one saves code, effort, and testing, and a large interface can be justified by wide use and sensible defaults. It still needs a *module quality assessment* and *version pinning*.
+
+### Immutable release
+
+A published version that is never changed after release; further work goes into new versions. Consumers can then rely on a version meaning the same code every time. Moving or reusing a version label breaks that guarantee.
+
+### Internal module
+
+A module written within an organization to encode its own conventions, such as sizing, tagging, security, and network layout. It is most useful for concepts specific to the organization, after checking what existing providers and modules already offer. Its authors know its consumers, so it usually needs fewer inputs than a public module, but it still needs tests and a release process.
+
+### Module contract
+
+The promises a module makes through its interface: every input is a commitment that its author must keep working in later versions. Supporting very different cases, such as two database engines in one module, creates a different contract that usually belongs in a separate module. A smaller contract is easier to test and to keep stable.
+
+### Module producer and consumer
+
+The producer is the team that develops, tests, and releases a module; consumers are the teams or projects that use it. Consumers choose which version to use and when to upgrade, and their needs should shape the interface. A producer that also uses its own module notices problems earlier, but that does not replace considering how others use it.
+
+### Open-closed principle
+
+A design rule stating that a module should be open for extension, through its inputs, but closed for modification, so consumers rarely need to change its code. It is applied with the knowledge available when the module is designed. Later needs may still require refactoring and a new version.
+
+### Over-parameterization
+
+Adding inputs for things that never differ between consumers, or wrapping a single resource in a module that exposes almost all of its settings. It adds complexity and testing effort without adding value. A useful first rule is to parameterize what affects security, size, and naming and to fix the rest.
+
+### Release process
+
+The automated steps a module goes through before publication: integration tests on test infrastructure, static and policy analysis, a publish step, and often a notification to consumers. In version control, tagging a commit can define the version number that consumers reference. Without such a process, a version number says nothing about which checks the code passed.
+
+### Vulnerability patching
+
+Keeping software patching separate from module design by exposing package or image versions as inputs. A security fix then becomes a change of value rather than a change of module code. A new module release is still needed when the fix changes the module's structure.
+
+## Lecture 9: GitOps, pipelines and team workflows
+
+### Continuous delivery
+
+A practice of delivering changes frequently and reliably through automation, small batches, and built-in quality checks. It began in software development but depends on suitable infrastructure and on development and operations working together. Automating one step does not achieve it if changes still wait in queues between teams.
+
+### Desired state controller
+
+A component inside or near the infrastructure that repeatedly checks that the real state still matches the definitions in version control and corrects differences (see *Convergence*). It is sometimes treated as the fourth GitOps principle and is common on container platforms. It is optional: scheduled pipeline runs can provide much of the same checking.
+
+### Everything as code
+
+Applying the same version-control and pipeline workflow to anything that can be described as text, such as documentation, dashboards, alerts, service-level objectives, and security policies. It brings review, history, and automated checks to those artifacts. Each kind of artifact still needs suitable validation.
+
+### Flow of change
+
+How a change moves from the team that needs it to production. Separate team silos, tickets, and repeated questions can make a five-minute change take days. Improving the flow means removing waiting and handovers, not only automating the technical step.
+
+### GitOps
+
+Managing infrastructure and configuration through *declarative configuration* kept under *version control* in Git, with automated pipelines that verify and deliver every change. It is continuous delivery applied to infrastructure code and is not limited to container platforms. Keeping code in Git is not GitOps if changes are still applied by hand.
+
+### Pipeline as code
+
+A pipeline definition stored as code in the same repository as the infrastructure it delivers, and owned by that repository's team. It is reviewed and versioned like the rest of the code. Its checks act as guardrails that codify the owning team's rules (see *Automated safeguard*).
+
+### Pull request
+
+A proposed change on a separate branch, submitted for review to a repository, including one owned by another team. Pipelines check it without deploying it, people discuss it, and the owners merge it, which triggers delivery. It replaces ticket-based requests but still depends on timely review.
+
+### Pull-based delivery
+
+A delivery model in which an agent inside or near the infrastructure periodically fetches definitions from version control and applies them. The pipeline service then needs no direct access to the target. The agent holds broad permissions close to the infrastructure and must itself be secured and monitored.
+
+### Push-based delivery
+
+A delivery model in which a pipeline service runs provisioning or configuration tools and pushes changes into the target. Each change is a visible pipeline run, which makes it easy to follow. The pipeline environment needs network access and credentials for the infrastructure, which is a security concern, especially for externally hosted services.
+
+### Release and deployment separation
+
+Keeping the publication of a tested application version apart from the decision about where it runs. Application pipelines publish artifacts to an *artifact repository*, while the infrastructure repository records which version runs in each environment. Version updates can be committed automatically, so that repository has both human and automated authors.
+
+### Repository ownership
+
+The arrangement in which the team that owns a repository defines its structure, pipelines, and rules, such as linter settings, and only that team merges to the main branch. Other teams contribute through pull requests. Consistency within the team matters more than any particular style rule.
+
+### Self-service interface
+
+A simple, documented way for other teams to make frequent changes themselves, such as editing structured data files in a repository or using a self-service portal. The internals can remain as complex as the owning team needs. Without automated checks behind it, self-service only moves risk to another team.

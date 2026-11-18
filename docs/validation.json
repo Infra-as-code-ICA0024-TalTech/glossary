@@ -1,6 +1,17 @@
 {
-  "terms": 45,
-  "lectures": 3,
-  "pdf_pages": 6,
+  "terms": 122,
+  "lectures": 9,
+  "pdf_pages": 15,
+  "terms_per_lecture": {
+    "Lecture 1": 17,
+    "Lecture 2": 16,
+    "Lecture 3": 17,
+    "Lecture 4": 12,
+    "Lecture 5": 12,
+    "Lecture 6": 12,
+    "Lecture 7": 12,
+    "Lecture 8": 12,
+    "Lecture 9": 12
+  },
   "moodle_live_import_tested": false
 }
