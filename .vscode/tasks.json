@@ -2,61 +2,28 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Glossary: Create Python environment",
-      "type": "process",
-      "command": "python3",
-      "args": [
-        "-m",
-        "venv",
-        ".venv"
-      ],
-      "windows": {
-        "command": "py",
-        "args": [
-          "-3",
-          "-m",
-          "venv",
-          ".venv"
-        ]
-      },
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
-      "problemMatcher": []
-    },
-    {
       "label": "Glossary: Set up dependencies",
-      "detail": "Run once after cloning, or after requirements.txt changes. Requires Python 3.12+ and internet access.",
+      "detail": "Run once after cloning, or after pyproject.toml changes. Requires uv (https://docs.astral.sh/uv/) and internet access; uv installs Python 3.12+ if needed.",
       "type": "process",
-      "command": "${workspaceFolder}/.venv/bin/python",
-      "windows": {
-        "command": "${workspaceFolder}/.venv/Scripts/python.exe"
-      },
+      "command": "uv",
       "args": [
-        "-m",
-        "pip",
-        "install",
-        "-r",
-        "requirements.txt"
+        "sync"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
       },
-      "dependsOn": "Glossary: Create Python environment",
       "problemMatcher": []
     },
     {
       "type": "process",
-      "command": "${workspaceFolder}/.venv/bin/python",
-      "windows": {
-        "command": "${workspaceFolder}/.venv/Scripts/python.exe"
-      },
+      "command": "uv",
       "options": {
         "cwd": "${workspaceFolder}"
       },
       "problemMatcher": [],
       "label": "Glossary: Convert all formats",
       "args": [
+        "run",
         "scripts/build.py"
       ],
       "group": {
@@ -66,16 +33,14 @@
     },
     {
       "type": "process",
-      "command": "${workspaceFolder}/.venv/bin/python",
-      "windows": {
-        "command": "${workspaceFolder}/.venv/Scripts/python.exe"
-      },
+      "command": "uv",
       "options": {
         "cwd": "${workspaceFolder}"
       },
       "problemMatcher": [],
       "label": "Glossary: Validate exports",
       "args": [
+        "run",
         "scripts/build.py",
         "--check"
       ],

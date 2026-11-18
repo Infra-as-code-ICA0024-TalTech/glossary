@@ -19,23 +19,22 @@ This repository owns the glossary source, formatting code, generated exports, an
 
 Open this repository folder and choose **Terminal > Run Task**:
 
-1. Run **Glossary: Set up dependencies** once after cloning, and after dependency changes. It creates `.venv` and installs the pinned requirements. Python 3.12+ and internet access are required for setup.
+1. Run **Glossary: Set up dependencies** once after cloning, and after dependency changes. It runs `uv sync`, which creates `.venv` and installs the pinned dependencies from `uv.lock`. [uv](https://docs.astral.sh/uv/) and internet access are required for setup; uv installs Python 3.12+ if it is missing.
 2. Edit `source/Glossary.md`.
 3. Run **Glossary: Convert all formats** to generate HTML, PDF, and Moodle XML. This is also the default build task.
 4. Run **Glossary: Validate exports** to check the existing outputs without rebuilding them.
 
-Tasks support macOS/Linux and Windows. The Windows setup task uses the `py` launcher. Conversion uses the repository's own `.venv` directly; it does not reinstall packages on every run.
+Tasks support macOS/Linux and Windows. The same uv commands work on Windows. Conversion runs through `uv run`, which uses the repository's own `.venv`.
 
 ## Build from the command line
 
 ```sh
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python scripts/build.py
-.venv/bin/python scripts/build.py --check
+uv sync
+uv run scripts/build.py
+uv run scripts/build.py --check
 ```
 
-On Windows, use `py -3 -m venv .venv` and `.venv\Scripts\python.exe` for the remaining commands. Edit the source, then commit it together with regenerated exports. Do not edit generated files directly.
+The same commands work on macOS, Linux, and Windows. Edit the source, then commit it together with regenerated exports. Do not edit generated files directly.
 
 The converter uses Python Markdown and ReportLab, with pypdf for verification. It checks unique terms, consecutive lecture numbering, italic cross-references, full HTML/XML agreement with the source, XML term/category round trips, the presence of every lecture heading, term and definition in the PDF, and that the PDF uses only the bundled fonts. The PDF was visually reviewed after the Lectures 1-9 update. **Live Moodle glossary import has not yet been tested.**
 
