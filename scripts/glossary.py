@@ -1,4 +1,5 @@
 """Export the editable concept glossary using the standalone glossary build dependencies."""
+import datetime
 import html
 import re
 import xml.etree.ElementTree as ET
@@ -105,6 +106,7 @@ code{font-family:var(--xa-font-mono);font-size:.82em;background:var(--xa-color-l
 .wrap{max-width:1240px;margin:0 auto;padding:0 28px}
 .xa-header{position:sticky;top:0;z-index:100;background:#ffffffe0;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--xa-color-line)}
 .xa-header-row{display:flex;align-items:center;gap:22px;height:64px}
+.xa-brand{display:flex;flex-shrink:0}
 .xa-logo{height:26px;width:auto;display:block;flex-shrink:0}
 .xa-header-title{color:var(--xa-color-navy);font-weight:700;font-size:.94rem;padding-left:22px;border-left:1px solid var(--xa-color-line);white-space:nowrap}
 .xa-header-spacer{flex:1}
@@ -149,6 +151,7 @@ dd p{margin:0 0 .5rem}dd p:last-child{margin-bottom:0}
 .xref{color:var(--xa-color-link)}
 .no-results{padding:22px;color:var(--xa-color-slate)}
 .no-results[hidden]{display:none}
+footer a{color:inherit;text-decoration:underline}
 footer{padding:12px 0 48px;color:var(--xa-color-muted);font-size:.85rem;text-align:center}
 @media (max-width:960px){.layout{grid-template-columns:1fr;gap:16px}
 .toc{top:64px;z-index:50;max-height:none;display:flex;gap:6px;overflow-x:auto;background:var(--xa-color-canvas);margin:0 -28px;padding:8px 28px;border-bottom:1px solid var(--xa-color-line);scrollbar-width:none}
@@ -205,6 +208,10 @@ HTML_SCRIPT = '''
 '''
 
 
+COPYRIGHT = f'© 2011-{datetime.date.today().year} Andrey Adamovich · extremeautomation.io'
+BRAND_URL = 'https://extremeautomation.io'
+
+
 def html_document(title, intro, sections, logo):
     count = sum(len(entries) for _, entries in sections)
     anchors = {term.casefold(): f'term-{slug(term)}' for _, entries in sections for term, _ in entries}
@@ -236,7 +243,7 @@ def html_document(title, intro, sections, logo):
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">
 <style>{HTML_CSS}</style></head><body>
-<header class="xa-header"><div class="wrap xa-header-row">{logo}<span class="xa-header-title">{html.escape(title)}</span>
+<header class="xa-header"><div class="wrap xa-header-row"><a class="xa-brand" href="{BRAND_URL}" rel="noopener" target="_blank" aria-label="eXtreme Automation">{logo}</a><span class="xa-header-title">{html.escape(title)}</span>
 <div class="xa-header-spacer"></div><span class="ver-badge">{count} terms</span></div></header>
 <div class="wrap"><section class="c-hero"><div class="eyebrow">{html.escape(eyebrow)}</div>
 <h1>{heading}</h1><div class="intro">{to_html(intro)}</div>
@@ -244,7 +251,7 @@ def html_document(title, intro, sections, logo):
 <input class="xa-input" id="term-search" type="search" placeholder="Search terms and definitions" autocomplete="off">
 <span class="search-status" id="search-status" aria-live="polite">{count} terms</span></div></section>
 <div class="layout">{''.join(toc)}<main class="lectures">{''.join(body)}</main></div></div>
-<footer class="wrap">{html.escape(title)} · {lecture_range(sections)} · {count} terms</footer>
+<footer class="wrap">{html.escape(title)} · {lecture_range(sections)} · {count} terms<br>© 2011-{datetime.date.today().year} Andrey Adamovich · <a href="{BRAND_URL}" rel="noopener">extremeautomation.io</a></footer>
 <script>{HTML_SCRIPT}</script></body></html>
 '''
 
@@ -345,6 +352,7 @@ def pdf_document(root, path, title, intro, sections):
         canvas.setFont('PTSans', 8)
         canvas.setFillColor(c['muted'])
         canvas.drawString(40, 24, footer_text)
+        canvas.drawString(40, 13, COPYRIGHT)
         canvas.setFont('JetBrainsMono', 8)
         canvas.drawRightString(A4[0]-40, 24, f'{doc.page:02d}')
         canvas.restoreState()
